@@ -53,8 +53,8 @@ function summarizeToolResult(tool: string, args: Record<string, unknown>, result
       }
       if (typeof parsed.data === 'object') {
         const keys = Object.keys(parsed.data).filter((key) => !key.startsWith('_'));
-        if (tool === 'get_financials' || tool === 'get_market_data' || tool === 'stock_screener') {
-          return keys.length === 1 ? 'Called 1 data source' : `Called ${keys.length} data sources`;
+        if (tool === 'fr_research') {
+          return keys.length === 1 ? 'Called 1 FR endpoint' : `Called ${keys.length} FR endpoints`;
         }
         if (tool === 'web_search') {
           return 'Did 1 search';

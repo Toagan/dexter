@@ -56,10 +56,10 @@ Use web_fetch as your FIRST choice whenever you need to read the content of a we
 ## When NOT to Use
 
 - Interactive pages that require JavaScript rendering, clicking, or form filling (use browser instead)
-- Structured financial data like metrics or estimates (use get_financials instead)
-- Stock or crypto prices (use get_market_data instead)
-- SEC filings content (use read_filings instead)
+- Structured financials, filings, line-item data, audit trails (use fr_research instead — it knows the FR API surface)
+- Reading FR filing markdown (use fr_research read_filing — it adds caching and raw-fallback handling)
 - When you need to navigate through multiple pages by clicking links (use browser instead)
+- NOTE: This tool IS the right choice when fr_research returns markdown_available=false and a raw_document_url — pipe that URL through here to retrieve the raw HTML.
 
 ## Schema
 

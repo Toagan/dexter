@@ -3,129 +3,139 @@ name: dcf-valuation
 description: Performs discounted cash flow (DCF) valuation analysis to estimate intrinsic value per share. Triggers when user asks for fair value, intrinsic value, DCF, valuation, "what is X worth", price target, undervalued/overvalued analysis, or wants to compare current price to fundamental value.
 ---
 
-# DCF Valuation Skill
+# DCF Valuation Skill (FR-only build)
+
+In this build of Dexter, FinancialReports.eu (`fr_research`) is the sole source of structured financial data. Live quotes and analyst estimates are obtained via `web_search` / `web_fetch`.
 
 ## Workflow Checklist
 
 Copy and track progress:
 ```
 DCF Analysis Progress:
-- [ ] Step 1: Gather financial data
-- [ ] Step 2: Calculate FCF growth rate
-- [ ] Step 3: Estimate discount rate (WACC)
-- [ ] Step 4: Project future cash flows (Years 1-5 + Terminal)
-- [ ] Step 5: Calculate present value and fair value per share
-- [ ] Step 6: Run sensitivity analysis
-- [ ] Step 7: Validate results
-- [ ] Step 8: Present results with caveats
+- [ ] Step 1: Resolve company on FR
+- [ ] Step 2: Gather standardized financials (BS / IS / CFS)
+- [ ] Step 3: Calculate FCF growth rate
+- [ ] Step 4: Estimate discount rate (WACC)
+- [ ] Step 5: Project future cash flows (Years 1-5 + Terminal)
+- [ ] Step 6: Calculate present value and fair value per share
+- [ ] Step 7: Fetch current price (web)
+- [ ] Step 8: Run sensitivity analysis
+- [ ] Step 9: Validate results
+- [ ] Step 10: Present results with caveats
 ```
 
-## Step 1: Gather Financial Data
+## Step 1: Resolve company on FR
 
-Call the `get_financials` tool with these queries:
+Call `fr_research` with `action="search_companies"`:
 
-### 1.1 Cash Flow History
-**Query:** `"[TICKER] annual cash flow statements for the last 5 years"`
+**Args:** `{ action: "search_companies", query: "<company name or ticker>" }`
 
-**Extract:** `free_cash_flow`, `net_cash_flow_from_operations`, `capital_expenditure`
+**Extract:** `company_id`, `name`, `country_code`, `sector`, `industry`
 
-**Fallback:** If `free_cash_flow` missing, calculate: `net_cash_flow_from_operations - capital_expenditure`
+If the user supplied an ISIN, use `action="resolve_isin"` instead with `company_isin=<ISIN>`.
 
-### 1.2 Financial Metrics
-**Query:** `"[TICKER] financial metrics snapshot"`
+## Step 2: Gather Standardized Financials
 
-**Extract:** `market_cap`, `enterprise_value`, `free_cash_flow_growth`, `revenue_growth`, `return_on_invested_capital`, `debt_to_equity`, `free_cash_flow_per_share`
+FR returns Capital-IQ-grade line items keyed by the 126 standard codes — no schema variance across geographies.
 
-### 1.3 Balance Sheet
-**Query:** `"[TICKER] latest balance sheet"`
+### 2.1 Cash Flow History (5 years)
 
-**Extract:** `total_debt`, `cash_and_equivalents`, `current_investments`, `outstanding_shares`
+`{ action: "get_financials", company_id, statement_type: "CFS", fiscal_year_from: <currentYear-5>, fiscal_period: "FY" }`
 
-**Fallback:** If `current_investments` missing, use 0
+**Extract per period:** `free_cash_flow`, `net_cash_flow_from_operations`, `capital_expenditure`
 
-### 1.4 Analyst Estimates
-**Query:** `"[TICKER] analyst estimates"`
+**Fallback:** if `free_cash_flow` missing, calculate `net_cash_flow_from_operations - capital_expenditure`.
 
-**Extract:** `earnings_per_share` (forward estimates by fiscal year)
+### 2.2 Income Statement (5 years)
 
-**Use:** Calculate implied EPS growth rate for cross-validation
+`{ action: "get_financials", company_id, statement_type: "IS", fiscal_year_from: <currentYear-5>, fiscal_period: "FY" }`
 
-### 1.5 Current Price
-Call the `get_market_data` tool:
+**Extract per period:** `revenue`, `ebitda`, `operating_income`, `net_income_loss`
 
-**Query:** `"[TICKER] price snapshot"`
+**Use:** revenue growth as cross-check on FCF growth.
 
-**Extract:** `price`
+### 2.3 Balance Sheet (latest)
 
-### 1.6 Company Facts
-Call the `get_financials` tool:
+`{ action: "get_financials", company_id, statement_type: "BS", fiscal_year_from: <currentYear-1>, fiscal_period: "FY" }`
 
-**Query:** `"[TICKER] company facts"`
+**Extract:** `total_debt` (or `long_term_debt + short_term_debt`), `cash_and_equivalents`, `current_investments`, `outstanding_shares` (also available on `get_company`).
 
-**Extract:** `sector`, `industry`, `market_cap`
+**Fallback:** if `current_investments` missing, use 0. If `outstanding_shares` missing on the BS, fetch from `{ action: "get_company", company_id, view: "full" }`.
 
-**Use:** Determine appropriate WACC range from [sector-wacc.md](sector-wacc.md)
+### 2.4 Company facts (sector / industry / market cap)
 
-## Step 2: Calculate FCF Growth Rate
+`{ action: "get_company", company_id, view: "full" }`
 
-Calculate 5-year FCF CAGR from cash flow history.
+**Extract:** `sector`, `industry`, `market_cap`, `country_code`, `primary_isin`, `primary_ticker`, `currency`.
 
-**Cross-validate with:** `free_cash_flow_growth` (YoY), `revenue_growth`, analyst EPS growth
+**Use:** sector → WACC range from [sector-wacc.md](sector-wacc.md). Note `currency` so the final number is reported in the same unit as the financials.
+
+## Step 3: Calculate FCF Growth Rate
+
+5-year FCF CAGR from cash-flow history.
+
+**Cross-validate with:** revenue growth from Step 2.2.
 
 **Growth rate selection:**
-- Stable FCF history → Use CAGR with 10-20% haircut
-- Volatile FCF → Weight analyst estimates more heavily
+- Stable FCF history → use CAGR with 10–20% haircut
+- Volatile FCF → use 3-year median growth, weight conservatively
 - **Cap at 15%** (sustained higher growth is rare)
 
-## Step 3: Estimate Discount Rate (WACC)
+Note: **No analyst-estimate cross-check available** in this build (FR does not surface consensus). If you want one, do an optional `web_search` for "<company> consensus EPS growth" but treat as soft signal.
 
-**Use the `sector` from company facts** to select the appropriate base WACC range from [sector-wacc.md](sector-wacc.md).
+## Step 4: Estimate Discount Rate (WACC)
+
+Use `sector` from Step 2.4 with [sector-wacc.md](sector-wacc.md) for base WACC range.
 
 **Default assumptions:**
-- Risk-free rate: 4%
-- Equity risk premium: 5-6%
-- Cost of debt: 5-6% pre-tax (~4% after-tax at 30% tax rate)
+- Risk-free rate: 4% (US 10-year proxy; adjust for non-USD reporters using local sovereign yield via `web_search`)
+- Equity risk premium: 5–6%
+- Cost of debt: 5–6% pre-tax (~4% after-tax at 30% tax rate)
 
-Calculate WACC using `debt_to_equity` for capital structure weights.
+Capital structure weights from BS: equity = `market_cap`, debt = `total_debt`.
 
-**Reasonableness check:** WACC should be 2-4% below `return_on_invested_capital` for value-creating companies.
+**Sanity check:** WACC should be 2–4% below ROIC for value-creating companies. ROIC = `operating_income × (1 - tax_rate) / (total_debt + book_equity)` from FR statements.
 
-**Sector adjustments:** Apply adjustment factors from [sector-wacc.md](sector-wacc.md) based on company-specific characteristics.
+## Step 5: Project Future Cash Flows
 
-## Step 4: Project Future Cash Flows
+**Years 1–5:** apply growth rate with 5% annual decay (×0.95, 0.90, 0.85, 0.80 for years 2–5) to reflect competitive dynamics.
 
-**Years 1-5:** Apply growth rate with 5% annual decay (multiply growth rate by 0.95, 0.90, 0.85, 0.80 for years 2-5). This reflects competitive dynamics.
+**Terminal value:** Gordon Growth Model with 2.5% terminal growth (GDP proxy). Use local long-run nominal GDP if reporter is non-US.
 
-**Terminal value:** Use Gordon Growth Model with 2.5% terminal growth (GDP proxy).
+## Step 6: Calculate Present Value
 
-## Step 5: Calculate Present Value
+Discount each FCF, sum to Enterprise Value, subtract Net Debt (`total_debt - cash_and_equivalents - current_investments`), divide by `outstanding_shares` for fair value per share. Report in the company's reporting currency from Step 2.4.
 
-Discount all FCFs → sum for Enterprise Value → subtract Net Debt → divide by `outstanding_shares` for fair value per share.
+## Step 7: Fetch Current Price (web fallback — FR has no quote feed)
 
-## Step 6: Sensitivity Analysis
+**Primary:** `web_search` for `"<ticker> stock price <exchange>"` (e.g. "ASML stock price Euronext Amsterdam"), then `web_fetch` the top result for a current quote.
 
-Create 3×3 matrix: WACC (base ±1%) vs terminal growth (2.0%, 2.5%, 3.0%).
+**Backup:** `web_fetch` directly on a Yahoo Finance / Google Finance / TradingView URL for the company's primary listing.
 
-## Step 7: Validate Results
+If no reliable quote can be obtained, **report fair value alone** with an explicit "current price unavailable — upside/downside not computed" note. Do not fabricate.
 
-Before presenting, verify these sanity checks:
+## Step 8: Sensitivity Analysis
 
-1. **EV comparison**: Calculated EV should be within 30% of reported `enterprise_value`
-   - If off by >30%, revisit WACC or growth assumptions
+3×3 matrix: WACC (base ±1%) vs terminal growth (2.0%, 2.5%, 3.0%).
 
-2. **Terminal value ratio**: Terminal value should be 50-80% of total EV for mature companies
-   - If >90%, growth rate may be too high
-   - If <40%, near-term projections may be aggressive
+## Step 9: Validate Results
 
-3. **Per-share cross-check**: Compare to `free_cash_flow_per_share × 15-25` as rough sanity check
+1. **Per-share cross-check:** compare to (5-year average `free_cash_flow / outstanding_shares`) × 15–25.
+2. **Terminal value ratio:** terminal value should be 50–80% of total EV for mature companies.
+   - >90%: growth rate too high; revisit Step 3.
+   - <40%: near-term projections too aggressive.
+3. **Currency consistency:** confirm the per-share output and fetched current price are in the same currency (or convert via FX from web_search).
 
-If validation fails, reconsider assumptions before presenting results.
+If validation fails, reconsider assumptions before presenting.
 
-## Step 8: Output Format
+## Step 10: Output Format
 
-Present a structured summary including:
-1. **Valuation Summary**: Current price vs. fair value, upside/downside percentage
-2. **Key Inputs Table**: All assumptions with their sources
-3. **Projected FCF Table**: 5-year projections with present values
-4. **Sensitivity Matrix**: 3×3 grid varying WACC (±1%) and terminal growth (2.0%, 2.5%, 3.0%)
-5. **Caveats**: Standard DCF limitations plus company-specific risks
+Present a structured summary:
+1. **Valuation Summary** — current price (with source) vs fair value, upside/downside %, currency.
+2. **Key Inputs Table** — every assumption with its source (FR vs web).
+3. **Projected FCF Table** — 5-year projections with present values.
+4. **Sensitivity Matrix** — 3×3 grid varying WACC (±1%) and terminal growth.
+5. **Caveats** — standard DCF limitations + FR-only-build limits:
+   - No forward analyst estimates cross-validation
+   - Pre-2024 historical depth may be shallow on FR
+   - Current price relies on a public web source and may lag real time

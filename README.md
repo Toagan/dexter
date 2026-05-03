@@ -1,168 +1,105 @@
-# Dexter 🤖
+# Dexter 🤖 — FR-only build
 
-Dexter is an autonomous financial research agent that thinks, plans, and learns as it works. It performs analysis using task planning, self-reflection, and real-time market data. Think Claude Code, but built specifically for financial research.
+Dexter is an autonomous financial research agent that thinks, plans, and learns as it works. **This fork has been refactored so that [FinancialReports.eu](https://financialreports.eu) is the sole structured-data source** — covering ~46K companies and 20M+ regulatory filings across G20 markets (SEC, EDINET, OpenDART, BaFin, AMF, FCA, TWSE, HKEX, SEDAR, ASX, NSE/BSE, CNINFO, B3, JSE, etc.), with Capital-IQ-grade standardized line items, AI-ready filing markdown, ISIN ↔ FIGI mapping, and webhook streaming.
 
-<img width="665" height="452" alt="Screenshot 2026-04-02 at 4 16 57 PM" src="https://github.com/user-attachments/assets/02418111-5f48-4a66-be5d-dc9bf9806284" />
+Think Claude Code, but for global filings + financials, with no US-centric bias.
 
-## Table of Contents
+## What changed in this fork
 
-- [👋 Overview](#-overview)
-- [✅ Prerequisites](#-prerequisites)
-- [💻 How to Install](#-how-to-install)
-- [🚀 How to Run](#-how-to-run)
-- [📊 How to Evaluate](#-how-to-evaluate)
-- [🐛 How to Debug](#-how-to-debug)
-- [📱 How to Use with WhatsApp](#-how-to-use-with-whatsapp)
-- [🤝 How to Contribute](#-how-to-contribute)
-- [📄 License](#-license)
+**Removed:**
+- Financial Datasets API integration (`get_financials`, `get_market_data`, `read_filings`, `stock_screener`)
+- The `FINANCIAL_DATASETS_API_KEY` requirement
 
+**Added:**
+- Unified `fr_research` tool exposing the full FinancialReports.eu surface (companies, filings with markdown + raw-document fallback, Capital-IQ-grade financials, audit trails, ISINs, line-item taxonomy, watchlist).
+- Two-step `read_filing` that checks `processing_status` and returns the raw document URL when markdown isn't ready, so the agent can fall back via `web_fetch`.
 
-## 👋 Overview
+**Tradeoffs (FR doesn't cover):**
+- Live stock / crypto quotes
+- Breaking news headlines
+- Analyst consensus estimates / forward EPS
+- Insider trades / institutional ownership / options flow
+- Pre-2024 historicals (FR coverage is shallow for older periods)
 
-Dexter takes complex financial questions and turns them into clear, step-by-step research plans. It runs those tasks using live market data, checks its own work, and refines the results until it has a confident, data-backed answer.  
+`web_search`, `web_fetch`, `browser`, and `x_search` remain available for these surfaces. The DCF skill, for example, fetches current price via `web_search` + `web_fetch` and explicitly notes when an estimate is unavailable.
 
-**Key Capabilities:**
-- **Intelligent Task Planning**: Automatically decomposes complex queries into structured research steps
-- **Autonomous Execution**: Selects and executes the right tools to gather financial data
-- **Self-Validation**: Checks its own work and iterates until tasks are complete
-- **Real-Time Financial Data**: Access to income statements, balance sheets, and cash flow statements
-- **Safety Features**: Built-in loop detection and step limits to prevent runaway execution
+## Tools exposed to the agent
 
-[![Twitter Follow](https://img.shields.io/twitter/follow/virattt?style=social)](https://twitter.com/virattt) [![Discord](https://img.shields.io/badge/Discord-Join%20Server-5865F2?style=social&logo=discord)](https://discord.gg/jpGHv2XB6T)
-
-<img width="1042" height="638" alt="Screenshot 2026-02-18 at 12 21 25 PM" src="https://github.com/user-attachments/assets/2a6334f9-863f-4bd2-a56f-923e42f4711e" />
-
+| Tool | Source | Purpose |
+|---|---|---|
+| **fr_research** | FinancialReports.eu | All structured financial data — companies, filings, financials, ISINs, audit trails, watchlist |
+| web_search | Exa / Perplexity / Tavily | Live quotes, news, anything FR doesn't cover |
+| web_fetch | local fetch + Readability | Extract a URL as markdown — also the raw-filing fallback |
+| browser | Playwright | JS-rendered pages, multi-step navigation |
+| x_search | X API | Sentiment, breaking signals |
+| read_file / write_file / edit_file | local | Workspace files |
+| memory_search / memory_get / memory_update | local SQLite + embeddings | Persistent memory |
+| heartbeat | local | Periodic checklist |
+| cron | local | Scheduled jobs |
+| skill | local | Invoke SKILL.md workflows (e.g. DCF) |
 
 ## ✅ Prerequisites
 
-- [Bun](https://bun.com) runtime (v1.0 or higher)
-- OpenAI API key (get [here](https://platform.openai.com/api-keys))
-- Financial Datasets API key (get [here](https://financialdatasets.ai))
-- Exa API key (get [here](https://exa.ai)) - optional, for web search
+- [Bun](https://bun.com) runtime (v1.0+)
+- A FinancialReports.eu API key (get one at https://financialreports.eu/profile/)
+- An LLM provider key (OpenAI, Anthropic, Google, xAI, OpenRouter, or local Ollama)
+- Optional: Exa / Perplexity / Tavily for `web_search`, X bearer token for `x_search`
 
 #### Installing Bun
 
-If you don't have Bun installed, you can install it using curl:
-
-**macOS/Linux:**
 ```bash
+# macOS / Linux
 curl -fsSL https://bun.com/install | bash
-```
 
-**Windows:**
-```bash
+# Windows
 powershell -c "irm bun.sh/install.ps1|iex"
 ```
 
-After installation, restart your terminal and verify Bun is installed:
-```bash
-bun --version
-```
+After install, restart your terminal and verify: `bun --version`.
 
 ## 💻 How to Install
 
-1. Clone the repository:
 ```bash
-git clone https://github.com/virattt/dexter.git
+git clone <this-fork-url>
 cd dexter
-```
-
-2. Install dependencies with Bun:
-```bash
 bun install
-```
-
-3. Set up your environment variables:
-```bash
-# Copy the example environment file
 cp env.example .env
-
-# Edit .env and add your API keys (if using cloud providers)
-# OPENAI_API_KEY=your-openai-api-key
-# ANTHROPIC_API_KEY=your-anthropic-api-key (optional)
-# GOOGLE_API_KEY=your-google-api-key (optional)
-# XAI_API_KEY=your-xai-api-key (optional)
-# OPENROUTER_API_KEY=your-openrouter-api-key (optional)
-
-# Institutional-grade market data for agents; AAPL, NVDA, MSFT are free
-# FINANCIAL_DATASETS_API_KEY=your-financial-datasets-api-key
-
-# (Optional) If using Ollama locally
-# OLLAMA_BASE_URL=http://127.0.0.1:11434
-
-# Web Search (Exa preferred, Tavily fallback)
-# EXASEARCH_API_KEY=your-exa-api-key
-# TAVILY_API_KEY=your-tavily-api-key
+# Edit .env — at minimum set FINANCIAL_REPORTS_API_KEY plus one LLM provider key
 ```
 
 ## 🚀 How to Run
 
-Run Dexter in interactive mode:
+Interactive mode:
 ```bash
 bun start
 ```
 
-Or with watch mode for development:
+Watch mode for development:
 ```bash
 bun dev
 ```
 
 ## 📊 How to Evaluate
 
-Dexter includes an evaluation suite that tests the agent against a dataset of financial questions. Evals use LangSmith for tracking and an LLM-as-judge approach for scoring correctness.
-
-**Run on all questions:**
 ```bash
-bun run src/evals/run.ts
+bun run src/evals/run.ts            # full dataset
+bun run src/evals/run.ts --sample 10  # random sample
 ```
 
-**Run on a random sample of data:**
-```bash
-bun run src/evals/run.ts --sample 10
-```
-
-The eval runner displays a real-time UI showing progress, current question, and running accuracy statistics. Results are logged to LangSmith for analysis.
+Eval results are uploaded to LangSmith.
 
 ## 🐛 How to Debug
 
-Dexter logs all tool calls to a scratchpad file for debugging and history tracking. Each query creates a new JSONL file in `.dexter/scratchpad/`.
-
-**Scratchpad location:**
-```
-.dexter/scratchpad/
-├── 2026-01-30-111400_9a8f10723f79.jsonl
-├── 2026-01-30-143022_a1b2c3d4e5f6.jsonl
-└── ...
-```
-
-Each file contains newline-delimited JSON entries tracking:
-- **init**: The original query
-- **tool_result**: Each tool call with arguments, raw result, and LLM summary
-- **thinking**: Agent reasoning steps
-
-**Example scratchpad entry:**
-```json
-{"type":"tool_result","timestamp":"2026-01-30T11:14:05.123Z","toolName":"get_income_statements","args":{"ticker":"AAPL","period":"annual","limit":5},"result":{...},"llmSummary":"Retrieved 5 years of Apple annual income statements showing revenue growth from $274B to $394B"}
-```
-
-This makes it easy to inspect exactly what data the agent gathered and how it interpreted results.
+Per-query tool-call trace at `.dexter/scratchpad/<date>_<id>.jsonl` — newline-delimited JSON with `init`, `tool_result`, `thinking` entries.
 
 ## 📱 How to Use with WhatsApp
 
-Chat with Dexter through WhatsApp by linking your phone to the gateway. Messages you send to yourself are processed by Dexter and responses are sent back to the same chat.
-
-**Quick start:**
 ```bash
-# Link your WhatsApp account (scan QR code)
-bun run gateway:login
-
-# Start the gateway
-bun run gateway
+bun run gateway:login   # link WhatsApp via QR code
+bun run gateway         # start the gateway
 ```
 
-Then open WhatsApp, go to your own chat (message yourself), and ask Dexter a question.
-
-For detailed setup instructions, configuration options, and troubleshooting, see the [WhatsApp Gateway README](src/gateway/channels/whatsapp/README.md).
+Then message yourself in WhatsApp; Dexter processes and replies.
 
 ## 🤝 How to Contribute
 
@@ -170,11 +107,10 @@ For detailed setup instructions, configuration options, and troubleshooting, see
 2. Create a feature branch
 3. Commit your changes
 4. Push to the branch
-5. Create a Pull Request
+5. Open a Pull Request
 
-**Important**: Please keep your pull requests small and focused.  This will make it easier to review and merge.
-
+Please keep PRs small and focused.
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+MIT.

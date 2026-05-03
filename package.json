@@ -1,7 +1,7 @@
 {
   "name": "dexter-ts",
   "version": "2026.4.1",
-  "description": "Dexter - AI agent for deep financial research.",
+  "description": "Dexter (FR-only build) - AI agent for global financial research, powered exclusively by FinancialReports.eu.",
   "type": "module",
   "main": "src/index.tsx",
   "bin": {

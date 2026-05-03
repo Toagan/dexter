@@ -1,5 +1,4 @@
 import { StructuredToolInterface } from '@langchain/core/tools';
-import { createGetFinancials, createGetMarketData, createReadFilings, createScreenStocks } from './finance/index.js';
 import { exaSearch, perplexitySearch, tavilySearch, WEB_SEARCH_DESCRIPTION, xSearchTool, X_SEARCH_DESCRIPTION } from './search/index.js';
 import { skillTool, SKILL_TOOL_DESCRIPTION } from './skill.js';
 import { webFetchTool, WEB_FETCH_DESCRIPTION } from './fetch/web-fetch.js';
@@ -7,14 +6,10 @@ import { browserTool, BROWSER_DESCRIPTION } from './browser/browser.js';
 import { readFileTool, READ_FILE_DESCRIPTION } from './filesystem/read-file.js';
 import { writeFileTool, WRITE_FILE_DESCRIPTION } from './filesystem/write-file.js';
 import { editFileTool, EDIT_FILE_DESCRIPTION } from './filesystem/edit-file.js';
-import { GET_FINANCIALS_DESCRIPTION } from './finance/get-financials.js';
-import { GET_MARKET_DATA_DESCRIPTION } from './finance/get-market-data.js';
-import { READ_FILINGS_DESCRIPTION } from './finance/read-filings.js';
-import { SCREEN_STOCKS_DESCRIPTION } from './finance/screen-stocks.js';
 import { heartbeatTool, HEARTBEAT_TOOL_DESCRIPTION } from './heartbeat/heartbeat-tool.js';
 import { cronTool, CRON_TOOL_DESCRIPTION } from './cron/cron-tool.js';
 import { memoryGetTool, MEMORY_GET_DESCRIPTION, memorySearchTool, MEMORY_SEARCH_DESCRIPTION, memoryUpdateTool, MEMORY_UPDATE_DESCRIPTION } from './memory/index.js';
-import { createFinancialReports, FINANCIAL_REPORTS_DESCRIPTION } from './financial-reports/index.js';
+import { createFrResearch, FR_RESEARCH_DESCRIPTION } from './financial-reports/index.js';
 import { discoverSkills } from '../skills/index.js';
 
 /**
@@ -35,55 +30,47 @@ export interface RegisteredTool {
 
 /**
  * Get all registered tools with their descriptions.
- * Conditionally includes tools based on environment configuration.
  *
- * @param model - The model name (needed for tools that require model-specific configuration)
- * @returns Array of registered tools
+ * In this build of Dexter, FinancialReports.eu is the sole structured-data
+ * source. Web/browser/x_search remain available for prices, news, estimates,
+ * and other surfaces FR doesn't cover.
+ *
+ * @param _model - Reserved for future model-specific tool config
  */
-export function getToolRegistry(model: string): RegisteredTool[] {
-  const tools: RegisteredTool[] = [
-    {
-      name: 'get_financials',
-      tool: createGetFinancials(model),
-      description: GET_FINANCIALS_DESCRIPTION,
-      compactDescription: 'Financial statements, metrics, and analyst estimates. Handles multi-company/multi-metric queries in one call.',
-      concurrencySafe: true,
-    },
-    {
-      name: 'get_market_data',
-      tool: createGetMarketData(model),
-      description: GET_MARKET_DATA_DESCRIPTION,
-      compactDescription: 'Stock/crypto prices, company news, and insider trades. Handles multi-asset queries in one call.',
-      concurrencySafe: true,
-    },
-    {
-      name: 'read_filings',
-      tool: createReadFilings(model),
-      description: READ_FILINGS_DESCRIPTION,
-      compactDescription: 'SEC filings (10-K, 10-Q, 8-K). Extracts and summarizes specific filing sections.',
-      concurrencySafe: true,
-    },
-    {
-      name: 'stock_screener',
-      tool: createScreenStocks(model),
-      description: SCREEN_STOCKS_DESCRIPTION,
-      compactDescription: 'Screen stocks by financial criteria (P/E, growth, margins, etc.).',
-      concurrencySafe: true,
-    },
-    {
-      name: 'web_fetch',
-      tool: webFetchTool,
-      description: WEB_FETCH_DESCRIPTION,
-      compactDescription: 'Fetch and extract content from a URL as markdown. Use when you need full article text beyond headlines.',
-      concurrencySafe: true,
-    },
-    {
-      name: 'browser',
-      tool: browserTool,
-      description: BROWSER_DESCRIPTION,
-      compactDescription: 'JavaScript-rendered pages and interactive navigation. Actions: navigate, snapshot, act, read, close.',
-      concurrencySafe: true,
-    },
+export function getToolRegistry(_model: string): RegisteredTool[] {
+  const tools: RegisteredTool[] = [];
+
+  // ----------------------------------------------------------- FinancialReports
+  // Required: registered unconditionally and treated as the canonical research backend.
+  tools.push({
+    name: 'fr_research',
+    tool: createFrResearch(),
+    description: FR_RESEARCH_DESCRIPTION,
+    compactDescription:
+      'Sole structured-data source. Companies, filings (markdown + raw fallback), Capital-IQ-grade financials, ISIN resolution, audit trails, watchlist. G20 coverage (~46K cos, 20M+ filings).',
+    concurrencySafe: true,
+  });
+
+  // --------------------------------------------------------------------- Web
+  tools.push({
+    name: 'web_fetch',
+    tool: webFetchTool,
+    description: WEB_FETCH_DESCRIPTION,
+    compactDescription:
+      'Fetch and extract content from a URL as markdown. Use for live quotes, news, raw filing fallback (when fr_research returns markdown_available=false).',
+    concurrencySafe: true,
+  });
+
+  tools.push({
+    name: 'browser',
+    tool: browserTool,
+    description: BROWSER_DESCRIPTION,
+    compactDescription: 'JavaScript-rendered pages and interactive navigation. Actions: navigate, snapshot, act, read, close.',
+    concurrencySafe: true,
+  });
+
+  // ----------------------------------------------------------------- Filesystem
+  tools.push(
     {
       name: 'read_file',
       tool: readFileTool,
@@ -105,6 +92,10 @@ export function getToolRegistry(model: string): RegisteredTool[] {
       compactDescription: 'Edit a file by replacing text. Requires user approval.',
       concurrencySafe: false,
     },
+  );
+
+  // ------------------------------------------------------------------ Workflow
+  tools.push(
     {
       name: 'heartbeat',
       tool: heartbeatTool,
@@ -140,26 +131,15 @@ export function getToolRegistry(model: string): RegisteredTool[] {
       compactDescription: 'Add, edit, or delete persistent memory entries.',
       concurrencySafe: false,
     },
-  ];
+  );
 
-  // Include financial_reports if FinancialReports.eu API key is configured
-  if (process.env.FINANCIAL_REPORTS_API_KEY) {
-    tools.push({
-      name: 'financial_reports',
-      tool: createFinancialReports(),
-      description: FINANCIAL_REPORTS_DESCRIPTION,
-      compactDescription: 'Global financial reports from FinancialReports.eu — annual reports, 20-F filings. Strong non-US/European coverage. Search companies, list filings, read full text.',
-      concurrencySafe: true,
-    });
-  }
-
-  // Include web_search if Exa, Perplexity, or Tavily API key is configured (Exa → Perplexity → Tavily)
+  // ----------------------------------------------- Web search (env-dependent)
   if (process.env.EXASEARCH_API_KEY) {
     tools.push({
       name: 'web_search',
       tool: exaSearch,
       description: WEB_SEARCH_DESCRIPTION,
-      compactDescription: 'Search the web for current information. Returns titles, URLs, and highlights.',
+      compactDescription: 'Search the web for current information (quotes, news, estimates that FR does not cover). Returns titles, URLs, and highlights.',
       concurrencySafe: true,
     });
   } else if (process.env.PERPLEXITY_API_KEY) {
@@ -167,7 +147,7 @@ export function getToolRegistry(model: string): RegisteredTool[] {
       name: 'web_search',
       tool: perplexitySearch,
       description: WEB_SEARCH_DESCRIPTION,
-      compactDescription: 'Search the web for current information. Returns an answer with citations.',
+      compactDescription: 'Search the web for current information (quotes, news, estimates that FR does not cover). Returns an answer with citations.',
       concurrencySafe: true,
     });
   } else if (process.env.TAVILY_API_KEY) {
@@ -175,7 +155,7 @@ export function getToolRegistry(model: string): RegisteredTool[] {
       name: 'web_search',
       tool: tavilySearch,
       description: WEB_SEARCH_DESCRIPTION,
-      compactDescription: 'Search the web for current information. Returns titles, URLs, and snippets.',
+      compactDescription: 'Search the web for current information (quotes, news, estimates that FR does not cover). Returns titles, URLs, and snippets.',
       concurrencySafe: true,
     });
   }
@@ -190,6 +170,7 @@ export function getToolRegistry(model: string): RegisteredTool[] {
     });
   }
 
+  // ---------------------------------------------------------------- Skills
   const availableSkills = discoverSkills();
   if (availableSkills.length > 0) {
     tools.push({
@@ -221,13 +202,6 @@ export function getTools(model: string): StructuredToolInterface[] {
   return getToolRegistry(model).map((t) => t.tool);
 }
 
-/**
- * Build the tool descriptions section for the system prompt.
- * Formats each tool's rich description with a header.
- *
- * @param model - The model name
- * @returns Formatted string with all tool descriptions
- */
 /**
  * Build compact tool descriptions for token-optimized system prompts.
  * Uses 1-2 sentence descriptions instead of full multi-paragraph ones.

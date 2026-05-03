@@ -53,13 +53,19 @@
 
 ## Tools
 
-- `financial_search`: primary tool for all financial data queries (prices, metrics, filings). Delegates to multiple sub-tools internally.
-- `financial_metrics`: direct metric lookups (revenue, market cap, etc.).
-- `read_filings`: SEC filing reader for 10-K, 10-Q, 8-K documents.
-- `web_search`: general web search (Exa if `EXASEARCH_API_KEY` set, else Tavily if `TAVILY_API_KEY` set).
-- `browser`: Playwright-based web scraping for reading pages the agent discovers.
+This build of Dexter uses **FinancialReports.eu as the sole structured-data source**. All other tools are general-purpose utilities.
+
+- `fr_research`: unified tool for FinancialReports.eu. Actions: `search_companies`, `get_company`, `get_financials`, `get_next_annual_report`, `search_filings`, `get_filing`, `read_filing` (markdown with raw-document fallback), `get_filing_history`, `resolve_isin`, `list_line_items`, `list_countries`, `list_filing_types`, `list_filing_categories`, `list_sources`, `get_watchlist`, `add_to_watchlist`, `remove_from_watchlist`, `bulk_watchlist`. Coverage: ~46K G20 companies / 20M+ filings.
+- `web_search`: general web search (Exa preferred → Perplexity → Tavily fallback). Used for live quotes, news, analyst estimates, and anything FR doesn't expose.
+- `web_fetch`: extract a URL as markdown. Also the raw-filing fallback when `read_filing` returns `markdown_available=false`.
+- `browser`: Playwright-based interactive navigation for JS-rendered pages.
+- `x_search`: X/Twitter sentiment + breaking signals.
+- `read_file` / `write_file` / `edit_file`: workspace filesystem (writes gated by approval).
+- `memory_search` / `memory_get` / `memory_update`: persistent memory (SQLite + embeddings under `.dexter/memory/`).
+- `heartbeat`: periodic checklist at `.dexter/HEARTBEAT.md`.
+- `cron`: scheduled jobs (croner).
 - `skill`: invokes SKILL.md-defined workflows (e.g. DCF valuation). Each skill runs at most once per query.
-- Tool registry: `src/tools/registry.ts`. Tools are conditionally included based on env vars.
+- Tool registry: `src/tools/registry.ts`. `fr_research`, filesystem, memory, heartbeat, cron are unconditional; web/X tools are env-gated; skills load when at least one SKILL.md is discovered.
 
 ## Skills
 
@@ -78,10 +84,11 @@
 
 ## Environment Variables
 
-- LLM keys: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, `XAI_API_KEY`, `OPENROUTER_API_KEY`
+- LLM keys: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, `XAI_API_KEY`, `OPENROUTER_API_KEY`, `MOONSHOT_API_KEY`, `DEEPSEEK_API_KEY`
 - Ollama: `OLLAMA_BASE_URL` (default `http://127.0.0.1:11434`)
-- Finance: `FINANCIAL_DATASETS_API_KEY`
-- Search: `EXASEARCH_API_KEY` (preferred), `TAVILY_API_KEY` (fallback)
+- Finance (sole structured-data source): `FINANCIAL_REPORTS_API_KEY`. Optional override: `FINANCIAL_REPORTS_BASE_URL`.
+- Search: `EXASEARCH_API_KEY` (preferred) → `PERPLEXITY_API_KEY` → `TAVILY_API_KEY` (fallback chain)
+- X / Twitter: `X_BEARER_TOKEN`
 - Tracing: `LANGSMITH_API_KEY`, `LANGSMITH_ENDPOINT`, `LANGSMITH_PROJECT`, `LANGSMITH_TRACING`
 - Never commit `.env` files or real API keys.
 

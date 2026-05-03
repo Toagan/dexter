@@ -11,9 +11,20 @@ function getApiKey(): string {
   return process.env.FINANCIAL_REPORTS_API_KEY || '';
 }
 
-/**
- * Shared request execution for FinancialReports.eu API.
- */
+type ParamValue = string | number | boolean | string[] | number[] | undefined;
+type Params = Record<string, ParamValue>;
+
+function appendParams(url: URL, params: Params): void {
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null) continue;
+    if (Array.isArray(value)) {
+      value.forEach((v) => url.searchParams.append(key, String(v)));
+    } else {
+      url.searchParams.append(key, String(value));
+    }
+  }
+}
+
 async function executeRequest(
   url: string,
   label: string,
@@ -31,7 +42,8 @@ async function executeRequest(
       ...init,
       headers: {
         'X-API-Key': apiKey,
-        'Accept': 'application/json',
+        Accept: 'application/json',
+        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
         ...init.headers,
       },
     });
@@ -41,54 +53,98 @@ async function executeRequest(
     throw new Error(`[FinancialReports API] request failed for ${label}: ${message}`);
   }
 
+  // FR returns 403 (not 401) on missing/invalid keys — caller branches on .ok already.
   if (!response.ok) {
-    const detail = `${response.status} ${response.statusText}`;
+    let body = '';
+    try {
+      body = await response.text();
+    } catch {
+      // ignore
+    }
+    const detail = `${response.status} ${response.statusText}${body ? ` — ${body.slice(0, 200)}` : ''}`;
     logger.error(`[FinancialReports API] error: ${label} — ${detail}`);
     throw new Error(`[FinancialReports API] request failed: ${detail}`);
   }
 
-  const data = await response.json().catch(() => {
+  // Some DELETE endpoints return 204 No Content
+  if (response.status === 204) {
+    return { ok: true };
+  }
+
+  const text = await response.text();
+  if (!text) {
+    return { ok: true };
+  }
+
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
     const detail = `invalid JSON (${response.status} ${response.statusText})`;
     logger.error(`[FinancialReports API] parse error: ${label} — ${detail}`);
     throw new Error(`[FinancialReports API] request failed: ${detail}`);
-  });
+  }
+}
 
-  return data as Record<string, unknown>;
+function paramsForCacheKey(params: Params): Record<string, string | number | string[] | undefined> {
+  const out: Record<string, string | number | string[] | undefined> = {};
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null) continue;
+    if (Array.isArray(v)) {
+      out[k] = v.map(String);
+    } else if (typeof v === 'boolean') {
+      out[k] = String(v);
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
 }
 
 export const frApi = {
   async get(
     endpoint: string,
-    params: Record<string, string | number | string[] | undefined>,
+    params: Params,
     options?: { cacheable?: boolean; ttlMs?: number },
   ): Promise<{ data: Record<string, unknown>; url: string }> {
-    const label = describeRequest(endpoint, params);
+    const cacheParams = paramsForCacheKey(params);
+    const label = describeRequest(endpoint, cacheParams);
 
     if (options?.cacheable) {
-      const cached = readCache(`fr:${endpoint}`, params, options.ttlMs);
+      const cached = readCache(`fr:${endpoint}`, cacheParams, options.ttlMs);
       if (cached) {
         return cached;
       }
     }
 
     const url = new URL(`${getBaseUrl()}${endpoint}`);
+    appendParams(url, params);
 
-    for (const [key, value] of Object.entries(params)) {
-      if (value !== undefined && value !== null) {
-        if (Array.isArray(value)) {
-          value.forEach((v) => url.searchParams.append(key, v));
-        } else {
-          url.searchParams.append(key, String(value));
-        }
-      }
-    }
-
-    const data = await executeRequest(url.toString(), label, {});
+    const data = await executeRequest(url.toString(), label, { method: 'GET' });
 
     if (options?.cacheable) {
-      writeCache(`fr:${endpoint}`, params, data, url.toString());
+      writeCache(`fr:${endpoint}`, cacheParams, data, url.toString());
     }
 
     return { data, url: url.toString() };
+  },
+
+  async post(
+    endpoint: string,
+    body: Record<string, unknown>,
+  ): Promise<{ data: Record<string, unknown>; url: string }> {
+    const url = `${getBaseUrl()}${endpoint}`;
+    const label = `POST ${endpoint}`;
+    const data = await executeRequest(url, label, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    return { data, url };
+  },
+
+  async del(endpoint: string): Promise<{ data: Record<string, unknown>; url: string }> {
+    const url = `${getBaseUrl()}${endpoint}`;
+    const label = `DELETE ${endpoint}`;
+    const data = await executeRequest(url, label, { method: 'DELETE' });
+    return { data, url };
   },
 };

@@ -243,8 +243,10 @@ ${toolDescriptions}
 
 ## Tool Usage Policy
 
-- Call get_financials or get_market_data ONCE with the full natural language query — they handle multi-company/multi-metric requests internally. Do NOT break up queries into multiple calls.
-- Only use web_fetch when headlines are insufficient (need quotes, deal specifics, earnings details).
+- fr_research is the sole structured-data backend (FinancialReports.eu). Use it for any company / filing / financials query. Resolve identity first via search_companies, then call other actions with the company_id.
+- For data FR does not cover (live quotes, news, analyst estimates, insider trades, crypto), use web_search and web_fetch.
+- read_filing returns markdown when processing_status=COMPLETED; otherwise it returns a raw_document_url. Pipe that URL through web_fetch to retrieve HTML, or surface the URL to the user for PDF/XBRL.
+- Only use web_fetch when headlines are insufficient (need quotes, deal specifics, earnings details, or raw filing fallback).
 - Tool results are automatically capped. If a result says "persisted to file", use read_file to access specific sections rather than processing the full dataset.
 - Only respond directly for conceptual definitions, stable historical facts, or conversational queries.
 

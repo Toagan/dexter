@@ -6,6 +6,38 @@ import { computeNextRunAtMs } from '../../cron/schedule.js';
 import { executeCronJob } from '../../cron/executor.js';
 import type { CronJob, CronSchedule } from '../../cron/types.js';
 
+/**
+ * Build a CronSchedule from the flattened tool-input fields.
+ * The schema is flattened (rather than a discriminated union) so the
+ * generated JSON Schema stays a strict subset that Google Gemini accepts —
+ * Gemini rejects `oneOf` + `const` patterns that discriminated unions emit.
+ */
+function buildScheduleFromInput(input: {
+  schedule_kind?: 'at' | 'every' | 'cron';
+  schedule_at?: string;
+  schedule_every_ms?: number;
+  schedule_anchor_ms?: number;
+  schedule_cron_expr?: string;
+  schedule_cron_tz?: string;
+}): CronSchedule | { error: string } | undefined {
+  if (!input.schedule_kind) return undefined;
+  switch (input.schedule_kind) {
+    case 'at': {
+      if (!input.schedule_at) return { error: 'schedule_at (ISO-8601 timestamp) is required when schedule_kind=at' };
+      return { kind: 'at', at: input.schedule_at };
+    }
+    case 'every': {
+      if (input.schedule_every_ms === undefined) return { error: 'schedule_every_ms is required when schedule_kind=every' };
+      if (input.schedule_every_ms < 60_000) return { error: 'schedule_every_ms minimum is 60000 (1 minute)' };
+      return { kind: 'every', everyMs: input.schedule_every_ms, anchorMs: input.schedule_anchor_ms };
+    }
+    case 'cron': {
+      if (!input.schedule_cron_expr) return { error: 'schedule_cron_expr is required when schedule_kind=cron' };
+      return { kind: 'cron', expr: input.schedule_cron_expr, tz: input.schedule_cron_tz };
+    }
+  }
+}
+
 export const CRON_TOOL_DESCRIPTION = `
 Manage scheduled/recurring tasks (cron jobs) that run automatically.
 Jobs run as isolated agent turns with full tool access, delivering results via WhatsApp.
@@ -25,11 +57,13 @@ Jobs run as isolated agent turns with full tool access, delivering results via W
 - **remove**: Permanently delete a job
 - **run**: Trigger a job immediately (useful for testing)
 
-## Schedule Types
+## Schedule
 
-- **at**: One-shot at a specific time. \`{{ "kind": "at", "at": "2026-04-01T14:00:00Z" }}\`
-- **every**: Recurring interval in milliseconds. \`{{ "kind": "every", "everyMs": 3600000 }}\` (1 hour)
-- **cron**: Cron expression with optional timezone. \`{{ "kind": "cron", "expr": "0 9 * * 1-5", "tz": "America/New_York" }}\`
+Pass the schedule as flat fields:
+
+- **One-shot at a specific time:** \`schedule_kind: "at"\`, \`schedule_at: "2026-04-01T14:00:00Z"\`
+- **Recurring interval (ms):** \`schedule_kind: "every"\`, \`schedule_every_ms: 3600000\` (1 hour); optional \`schedule_anchor_ms\`
+- **Cron expression:** \`schedule_kind: "cron"\`, \`schedule_cron_expr: "0 9 * * 1-5"\`; optional \`schedule_cron_tz: "America/New_York"\`
 
 ## Fulfillment Modes
 
@@ -51,28 +85,38 @@ Write it as a clear instruction, e.g.: "Check the current price of AAPL. If it h
 - Minimum interval for "every" schedules is 60 seconds
 `.trim();
 
-const scheduleSchema = z.discriminatedUnion('kind', [
-  z.object({
-    kind: z.literal('at'),
-    at: z.string().describe('ISO-8601 timestamp for one-shot execution'),
-  }),
-  z.object({
-    kind: z.literal('every'),
-    everyMs: z.number().min(60000).describe('Interval in milliseconds (minimum 60000 = 1 minute)'),
-    anchorMs: z.number().optional().describe('Optional anchor timestamp in ms'),
-  }),
-  z.object({
-    kind: z.literal('cron'),
-    expr: z.string().describe('Cron expression (5 or 6 fields)'),
-    tz: z.string().optional().describe('IANA timezone (default: system timezone)'),
-  }),
-]);
-
 const cronToolSchema = z.object({
   action: z.enum(['list', 'add', 'update', 'remove', 'run']),
   name: z.string().optional().describe('Human-readable job name (required for add)'),
   description: z.string().optional().describe('Optional description'),
-  schedule: scheduleSchema.optional().describe('Schedule configuration (required for add)'),
+
+  // Flattened schedule (was z.discriminatedUnion — flattened so the generated
+  // JSON Schema is a strict subset that Google Gemini accepts).
+  schedule_kind: z
+    .enum(['at', 'every', 'cron'])
+    .optional()
+    .describe('Schedule kind: "at" (one-shot), "every" (interval), "cron" (expression). Required for add.'),
+  schedule_at: z
+    .string()
+    .optional()
+    .describe('ISO-8601 timestamp (used when schedule_kind="at")'),
+  schedule_every_ms: z
+    .number()
+    .optional()
+    .describe('Interval in milliseconds, minimum 60000 = 1 minute (used when schedule_kind="every")'),
+  schedule_anchor_ms: z
+    .number()
+    .optional()
+    .describe('Optional anchor timestamp in ms (used when schedule_kind="every")'),
+  schedule_cron_expr: z
+    .string()
+    .optional()
+    .describe('Cron expression with 5 or 6 fields (used when schedule_kind="cron")'),
+  schedule_cron_tz: z
+    .string()
+    .optional()
+    .describe('IANA timezone (used when schedule_kind="cron", default: system timezone)'),
+
   message: z.string().optional().describe('Agent prompt for the job (required for add)'),
   model: z.string().optional().describe('Optional model override for job execution'),
   modelProvider: z.string().optional().describe('Optional model provider override'),
@@ -98,13 +142,15 @@ export const cronTool = new DynamicStructuredTool({
 
       case 'add': {
         if (!input.name) return 'Error: name is required for add.';
-        if (!input.schedule) return 'Error: schedule is required for add.';
         if (!input.message) return 'Error: message is required for add.';
+        const built = buildScheduleFromInput(input);
+        if (!built) return 'Error: schedule is required for add (set schedule_kind plus the matching field(s)).';
+        if ('error' in built) return `Error: ${built.error}`;
 
         const store = loadCronStore();
         const now = Date.now();
         const id = randomBytes(8).toString('hex');
-        const schedule = input.schedule as CronSchedule;
+        const schedule = built;
 
         const nextRunAtMs = computeNextRunAtMs(schedule, now);
         if (nextRunAtMs === undefined && schedule.kind === 'at') {
@@ -148,10 +194,14 @@ export const cronTool = new DynamicStructuredTool({
 
         if (input.name !== undefined) job.name = input.name;
         if (input.description !== undefined) job.description = input.description;
-        if (input.schedule !== undefined) {
-          job.schedule = input.schedule as CronSchedule;
-          job.state.nextRunAtMs = computeNextRunAtMs(job.schedule, Date.now());
-          job.state.scheduleErrorCount = 0;
+        if (input.schedule_kind !== undefined) {
+          const built = buildScheduleFromInput(input);
+          if (built && 'error' in built) return `Error: ${built.error}`;
+          if (built) {
+            job.schedule = built;
+            job.state.nextRunAtMs = computeNextRunAtMs(job.schedule, Date.now());
+            job.state.scheduleErrorCount = 0;
+          }
         }
         if (input.message !== undefined) job.payload.message = input.message;
         if (input.model !== undefined) job.payload.model = input.model;

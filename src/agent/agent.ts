@@ -73,6 +73,16 @@ export class Agent {
     const model = config.model ?? DEFAULT_MODEL;
     const tools = getTools(model);
     const concurrencyMap = getToolConcurrencyMap(model);
+
+    // Load MCP tools from configured remote servers
+    try {
+      const { getMcpTools } = await import('../mcp/index.js');
+      const mcpTools = await getMcpTools();
+      for (const tool of mcpTools) {
+        tools.push(tool);
+        concurrencyMap.set(tool.name, true);
+      }
+    } catch { /* MCP not configured or failed — continue without */ }
     const soulContent = await loadSoulDocument();
     const rulesContent = await loadRulesDocument();
     let memoryFiles: string[] = [];

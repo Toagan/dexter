@@ -14,6 +14,7 @@ import { SCREEN_STOCKS_DESCRIPTION } from './finance/screen-stocks.js';
 import { heartbeatTool, HEARTBEAT_TOOL_DESCRIPTION } from './heartbeat/heartbeat-tool.js';
 import { cronTool, CRON_TOOL_DESCRIPTION } from './cron/cron-tool.js';
 import { memoryGetTool, MEMORY_GET_DESCRIPTION, memorySearchTool, MEMORY_SEARCH_DESCRIPTION, memoryUpdateTool, MEMORY_UPDATE_DESCRIPTION } from './memory/index.js';
+import { createFinancialReports, FINANCIAL_REPORTS_DESCRIPTION } from './financial-reports/index.js';
 import { discoverSkills } from '../skills/index.js';
 
 /**
@@ -140,6 +141,17 @@ export function getToolRegistry(model: string): RegisteredTool[] {
       concurrencySafe: false,
     },
   ];
+
+  // Include financial_reports if FinancialReports.eu API key is configured
+  if (process.env.FINANCIAL_REPORTS_API_KEY) {
+    tools.push({
+      name: 'financial_reports',
+      tool: createFinancialReports(),
+      description: FINANCIAL_REPORTS_DESCRIPTION,
+      compactDescription: 'Global financial reports from FinancialReports.eu — annual reports, 20-F filings. Strong non-US/European coverage. Search companies, list filings, read full text.',
+      concurrencySafe: true,
+    });
+  }
 
   // Include web_search if Exa, Perplexity, or Tavily API key is configured (Exa → Perplexity → Tavily)
   if (process.env.EXASEARCH_API_KEY) {

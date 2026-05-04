@@ -1,6 +1,6 @@
 # WhatsApp Gateway
 
-Chat with Dexter through WhatsApp by linking your phone to the gateway. Messages you send to yourself (self-chat) are processed by Dexter and responses are sent back to the same chat.
+Chat with FinancialReports through WhatsApp by linking your phone to the gateway. Messages you send to yourself (self-chat) are processed by FinancialReports and responses are sent back to the same chat.
 
 ## Table of Contents
 
@@ -16,13 +16,13 @@ Chat with Dexter through WhatsApp by linking your phone to the gateway. Messages
 
 ## ✅ Prerequisites
 
-- Dexter installed and working (see main [README](../../../../README.md))
+- FinancialReports installed and working (see main [README](../../../../README.md))
 - WhatsApp installed on your phone
 - Your phone connected to the internet
 
 ## 🔗 How to Link WhatsApp
 
-Link your WhatsApp account to Dexter by scanning a QR code:
+Link your WhatsApp account to FinancialReports by scanning a QR code:
 
 ```bash
 bun run gateway:login
@@ -34,15 +34,15 @@ This will:
 3. Go to **Settings > Linked Devices > Link a Device**
 4. Scan the QR code
 
-After linking, you'll be asked how you want to use Dexter:
+After linking, you'll be asked how you want to use FinancialReports:
 
 ### Option 1: Self-chat (personal phone)
 
-Use your own WhatsApp to talk to Dexter by messaging yourself. The linked phone number is added to `allowFrom` and self-chat mode is activated automatically.
+Use your own WhatsApp to talk to FinancialReports by messaging yourself. The linked phone number is added to `allowFrom` and self-chat mode is activated automatically.
 
 ### Option 2: Dedicated bot phone
 
-If Dexter has its own phone number (e.g. a separate SIM), choose this option and enter the phone number(s) allowed to message it. The gateway will be configured with `dmPolicy: "allowlist"` so other people can DM the bot.
+If FinancialReports has its own phone number (e.g. a separate SIM), choose this option and enter the phone number(s) allowed to message it. The gateway will be configured with `dmPolicy: "allowlist"` so other people can DM the bot.
 
 Credentials are saved to `.dexter/credentials/whatsapp/default/`.
 
@@ -57,10 +57,10 @@ bun run gateway
 You should see:
 ```
 [whatsapp] Connected
-Dexter gateway running. Press Ctrl+C to stop.
+FinancialReports gateway running. Press Ctrl+C to stop.
 ```
 
-The gateway will now listen for incoming WhatsApp messages and respond using Dexter.
+The gateway will now listen for incoming WhatsApp messages and respond using FinancialReports.
 
 ## 💬 How to Chat
 
@@ -69,13 +69,13 @@ Once the gateway is running:
 1. Open WhatsApp on your phone
 2. Go to your own chat (message yourself)
 3. Send a message like "What is Apple's revenue?"
-4. You'll see a typing indicator while Dexter processes
-5. Dexter's response will appear in the chat
+4. You'll see a typing indicator while FinancialReports processes
+5. FinancialReports's response will appear in the chat
 
 **Example conversation:**
 ```
 You: What was NVIDIA's revenue in 2024?
-Dexter: NVIDIA's revenue for fiscal year 2024 was $60.9 billion...
+FinancialReports: NVIDIA's revenue for fiscal year 2024 was $60.9 billion...
 ```
 
 ## ⚙️ Configuration
@@ -99,7 +99,7 @@ The gateway configuration is stored at `.dexter/gateway.json`. It's auto-created
 }
 ```
 
-**Bot phone configuration** (dedicated Dexter phone, others message it):
+**Bot phone configuration** (dedicated FinancialReports phone, others message it):
 ```json
 {
   "gateway": {
@@ -128,7 +128,7 @@ The gateway configuration is stored at `.dexter/gateway.json`. It's auto-created
 
 | Setting | Description |
 |---------|-------------|
-| `channels.whatsapp.allowFrom` | Phone numbers allowed to message Dexter (E.164 format) |
+| `channels.whatsapp.allowFrom` | Phone numbers allowed to message FinancialReports (E.164 format) |
 | `channels.whatsapp.enabled` | Enable/disable the WhatsApp channel |
 | `accounts.<id>.dmPolicy` | DM access policy: `pairing` (default), `allowlist`, `open`, or `disabled` |
 | `accounts.<id>.allowFrom` | Per-account allowed senders (overrides top-level `allowFrom`) |
@@ -136,7 +136,7 @@ The gateway configuration is stored at `.dexter/gateway.json`. It's auto-created
 
 ## 👥 Group Chat
 
-Dexter can participate in WhatsApp group chats, responding only when @-mentioned.
+FinancialReports can participate in WhatsApp group chats, responding only when @-mentioned.
 
 ### Setup
 
@@ -162,16 +162,16 @@ Add group policy to your account in `.dexter/gateway.json`:
 | Setting | Description |
 |---------|-------------|
 | `groupPolicy` | `"open"` (any group), `"allowlist"` (restricted), or `"disabled"` (default) |
-| `groupAllowFrom` | Which groups Dexter can participate in (`["*"]` for any) |
+| `groupAllowFrom` | Which groups FinancialReports can participate in (`["*"]` for any) |
 
-You don't need to list individual group members — when `groupPolicy` is `"open"`, Dexter will respond to @-mentions from anyone in any group it's added to.
+You don't need to list individual group members — when `groupPolicy` is `"open"`, FinancialReports will respond to @-mentions from anyone in any group it's added to.
 
 ### Usage
 
-1. Add Dexter's WhatsApp number to a group
-2. Send messages normally — Dexter stays silent
-3. @-mention Dexter (tap `@` and select from the picker) to get a response
-4. Dexter sees recent group messages for context, so it can follow the conversation
+1. Add FinancialReports's WhatsApp number to a group
+2. Send messages normally — FinancialReports stays silent
+3. @-mention FinancialReports (tap `@` and select from the picker) to get a response
+4. FinancialReports sees recent group messages for context, so it can follow the conversation
 
 **Note:** You must use WhatsApp's @-mention picker (tap `@` then select the contact) — typing a phone number manually won't trigger a response.
 
@@ -212,7 +212,7 @@ If you're experiencing persistent issues (connection problems, encryption errors
 2. **Unlink from WhatsApp:**
    - Open WhatsApp on your phone
    - Go to **Settings > Linked Devices**
-   - Tap on the Dexter device and select **Log Out**
+   - Tap on the FinancialReports device and select **Log Out**
 
 3. **Clear all local data:**
    ```bash

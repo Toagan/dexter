@@ -125,7 +125,7 @@ Before editing or deleting, use memory_get to verify the exact text to match.`;
 /**
  * Default system prompt used when no specific prompt is provided.
  */
-export const DEFAULT_SYSTEM_PROMPT = `You are Dexter, a helpful AI assistant.
+export const DEFAULT_SYSTEM_PROMPT = `You are the FinancialReports research agent, a helpful AI assistant.
 
 Current date: ${getCurrentDate()}
 
@@ -231,7 +231,7 @@ export function buildSystemPrompt(
     ? `\n## Tables (for comparative/tabular data)\n\n${profile.tables}`
     : '';
 
-  return `You are Dexter, a ${profile.label} assistant with access to research tools.
+  return `You are the FinancialReports research agent, a ${profile.label} assistant with access to research tools.
 
 Current date: ${getCurrentDate()}
 

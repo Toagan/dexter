@@ -1,6 +1,6 @@
-# Dexter 🤖 — FR-only build
+# FinancialReports 🤖
 
-Dexter is an autonomous financial research agent that thinks, plans, and learns as it works. **This fork has been refactored so that [FinancialReports.eu](https://financialreports.eu) is the sole structured-data source** — covering ~46K companies and 20M+ regulatory filings across G20 markets (SEC, EDINET, OpenDART, BaFin, AMF, FCA, TWSE, HKEX, SEDAR, ASX, NSE/BSE, CNINFO, B3, JSE, etc.), with Capital-IQ-grade standardized line items, AI-ready filing markdown, ISIN ↔ FIGI mapping, and webhook streaming.
+**FinancialReports** is an autonomous financial research agent that thinks, plans, and learns as it works. It is powered exclusively by the [FinancialReports.eu](https://financialreports.eu) API — covering ~46K companies and 20M+ regulatory filings across G20 markets (SEC, EDINET, OpenDART, BaFin, AMF, FCA, TWSE, HKEX, SEDAR, ASX, NSE/BSE, CNINFO, B3, JSE, etc.), with Capital-IQ-grade standardized line items, AI-ready filing markdown, ISIN ↔ FIGI mapping, and webhook streaming.
 
 Think Claude Code, but for global filings + financials, with no US-centric bias.
 
@@ -99,7 +99,7 @@ bun run gateway:login   # link WhatsApp via QR code
 bun run gateway         # start the gateway
 ```
 
-Then message yourself in WhatsApp; Dexter processes and replies.
+Then message yourself in WhatsApp; FinancialReports processes and replies.
 
 ## 🤝 How to Contribute
 

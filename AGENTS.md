@@ -1,7 +1,8 @@
 # Repository Guidelines
 
-- Repo: https://github.com/virattt/dexter
-- Dexter is a CLI-based AI agent for deep financial research, built with TypeScript, Ink (React for CLI), and LangChain.
+- Repo: https://github.com/Toagan/dexter (branch: `fr-only`)
+- Upstream: https://github.com/virattt/dexter (this fork strips the Financial Datasets backend)
+- FinancialReports is a CLI-based AI agent for deep financial research, built with TypeScript, Ink (React for CLI), and LangChain. The agent is branded "FinancialReports" but is sourced from the Dexter codebase; internal config paths under `~/.dexter/` and `.dexter/` are unchanged for state-preservation reasons.
 
 ## Project Structure
 
@@ -53,7 +54,7 @@
 
 ## Tools
 
-This build of Dexter uses **FinancialReports.eu as the sole structured-data source**. All other tools are general-purpose utilities.
+The agent uses **FinancialReports.eu as the sole structured-data source**. All other tools are general-purpose utilities.
 
 - `fr_research`: unified tool for FinancialReports.eu. Actions: `search_companies`, `get_company`, `get_financials`, `get_next_annual_report`, `search_filings`, `get_filing`, `read_filing` (markdown with raw-document fallback), `get_filing_history`, `resolve_isin`, `list_line_items`, `list_countries`, `list_filing_types`, `list_filing_categories`, `list_sources`, `get_watchlist`, `add_to_watchlist`, `remove_from_watchlist`, `bulk_watchlist`. Coverage: ~46K G20 companies / 20M+ filings.
 - `web_search`: general web search (Exa preferred → Perplexity → Tavily fallback). Used for live quotes, news, analyst estimates, and anything FR doesn't expose.

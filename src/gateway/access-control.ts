@@ -77,10 +77,10 @@ export function isAllowedPhone(params: {
 
 export function buildPairingReply(code: string, senderId: string): string {
   return [
-    'Dexter access request received.',
+    'FinancialReports access request received.',
     `Sender ID: ${senderId}`,
     `Approval code: ${code}`,
-    'Ask the operator to approve this code in Dexter gateway config.',
+    'Ask the operator to approve this code in FinancialReports gateway config.',
   ].join('\n');
 }
 

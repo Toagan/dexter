@@ -1,11 +1,12 @@
 {
-  "name": "dexter-ts",
+  "name": "financialreports-cli",
   "version": "2026.4.1",
-  "description": "Dexter (FR-only build) - AI agent for global financial research, powered exclusively by FinancialReports.eu.",
+  "description": "FinancialReports — AI agent for global financial research, powered exclusively by the FinancialReports.eu API.",
   "type": "module",
   "main": "src/index.tsx",
   "bin": {
-    "dexter-ts": "./src/index.tsx"
+    "financialreports": "./src/index.tsx",
+    "fr": "./src/index.tsx"
   },
   "scripts": {
     "start": "bun run src/index.tsx",

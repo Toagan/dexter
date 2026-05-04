@@ -13,7 +13,7 @@ const TIMEOUT_MS = 30_000;
 // ============================================================================
 
 export const FR_RESEARCH_DESCRIPTION = `
-Unified research tool backed by FinancialReports.eu — the sole source of structured financial data in this build of Dexter. Covers companies, regulatory filings, standardized line-item financials, identifier resolution, and watchlist management for ~46K companies / 20M+ filings across G20 markets (SEC, EDINET, OpenDART, BaFin, AMF, FCA, TWSE, HKEX, SEDAR, ASX, NSE/BSE, CNINFO, B3, JSE, etc.).
+Unified research tool backed by FinancialReports.eu — the sole source of structured financial data in this build. Covers companies, regulatory filings, standardized line-item financials, identifier resolution, and watchlist management for ~46K companies / 20M+ filings across G20 markets (SEC, EDINET, OpenDART, BaFin, AMF, FCA, TWSE, HKEX, SEDAR, ASX, NSE/BSE, CNINFO, B3, JSE, etc.).
 
 ## When to use this tool
 

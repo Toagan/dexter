@@ -77,7 +77,7 @@ function waitForCallback(timeoutMs = 120_000): Promise<string> {
 
       if (code) {
         res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end('<html><body><h2>Authorization successful!</h2><p>You can close this tab and return to Dexter.</p></body></html>');
+        res.end('<html><body><h2>Authorization successful!</h2><p>You can close this tab and return to FinancialReports.</p></body></html>');
         clearTimeout(timeout);
         server.close();
         resolve(code);
@@ -138,8 +138,8 @@ export class DexterOAuthProvider implements OAuthClientProvider {
       token_endpoint_auth_method: 'none',
       grant_types: ['authorization_code', 'refresh_token'],
       response_types: ['code'],
-      client_name: `Dexter (${this.serverName})`,
-      client_uri: 'https://github.com/virattt/dexter',
+      client_name: `FinancialReports (${this.serverName})`,
+      client_uri: 'https://github.com/Toagan/dexter',
     };
   }
 

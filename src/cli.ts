@@ -231,7 +231,7 @@ export async function runCli() {
 
   const HELP_TEXT = `Keyboard Shortcuts
   esc          Interrupt query / clear input
-  ctrl+c       Exit Dexter
+  ctrl+c       Exit FinancialReports
   /model       Switch LLM provider and model
   /rules       Show research rules
   /clear       Clear conversation

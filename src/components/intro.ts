@@ -11,7 +11,7 @@ export class IntroComponent extends Container {
   constructor(model: string) {
     super();
 
-    const welcomeText = 'Welcome to Dexter';
+    const welcomeText = 'Welcome to FinancialReports';
     const versionText = ` v${packageJson.version}`;
     const fullText = welcomeText + versionText;
     const padding = Math.floor((INTRO_WIDTH - fullText.length - 2) / 2);
@@ -38,12 +38,12 @@ export class IntroComponent extends Container {
         theme.bold(
           theme.primary(
             `
-██████╗ ███████╗██╗  ██╗████████╗███████╗██████╗ 
-██╔══██╗██╔════╝╚██╗██╔╝╚══██╔══╝██╔════╝██╔══██╗
-██║  ██║█████╗   ╚███╔╝    ██║   █████╗  ██████╔╝
-██║  ██║██╔══╝   ██╔██╗    ██║   ██╔══╝  ██╔══██╗
-██████╔╝███████╗██╔╝ ██╗   ██║   ███████╗██║  ██║
-╚═════╝ ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝`,
+███████╗██████╗
+██╔════╝██╔══██╗
+█████╗  ██████╔╝
+██╔══╝  ██╔══██╗
+██║     ██║  ██║
+╚═╝     ╚═╝  ╚═╝`,
           ),
         ),
         0,
@@ -52,7 +52,24 @@ export class IntroComponent extends Container {
     );
 
     this.addChild(new Spacer(1));
-    this.addChild(new Text('Your AI assistant for deep financial research.', 0, 0));
+    this.addChild(new Text(theme.bold('FinancialReports'), 0, 0));
+    this.addChild(new Text('Your AI agent for global financial research.', 0, 0));
+    this.addChild(new Spacer(1));
+    this.addChild(
+      new Text(
+        theme.muted('FinancialReports is the AI-ready, global, real-time data layer for'),
+        0,
+        0,
+      ),
+    );
+    this.addChild(
+      new Text(
+        `${theme.bold('46,231')}${theme.muted(' public equities · ')}${theme.bold('21,246,943')}${theme.muted(' filings · ')}${theme.bold('39')}${theme.muted(' filing types.')}`,
+        0,
+        0,
+      ),
+    );
+    this.addChild(new Spacer(1));
     this.modelText = new Text('', 0, 0);
     this.addChild(this.modelText);
     this.setModel(model);

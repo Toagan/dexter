@@ -31,8 +31,8 @@ export interface RegisteredTool {
 /**
  * Get all registered tools with their descriptions.
  *
- * In this build of Dexter, FinancialReports.eu is the sole structured-data
- * source. Web/browser/x_search remain available for prices, news, estimates,
+ * FinancialReports.eu is the sole structured-data source.
+ * Web/browser/x_search remain available for prices, news, estimates,
  * and other surfaces FR doesn't cover.
  *
  * @param _model - Reserved for future model-specific tool config

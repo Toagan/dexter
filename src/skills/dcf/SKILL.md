@@ -3,9 +3,9 @@ name: dcf-valuation
 description: Performs discounted cash flow (DCF) valuation analysis to estimate intrinsic value per share. Triggers when user asks for fair value, intrinsic value, DCF, valuation, "what is X worth", price target, undervalued/overvalued analysis, or wants to compare current price to fundamental value.
 ---
 
-# DCF Valuation Skill (FR-only build)
+# DCF Valuation Skill
 
-In this build of Dexter, FinancialReports.eu (`fr_research`) is the sole source of structured financial data. Live quotes and analyst estimates are obtained via `web_search` / `web_fetch`.
+FinancialReports.eu (`fr_research`) is the sole source of structured financial data. Live quotes and analyst estimates are obtained via `web_search` / `web_fetch`.
 
 ## Workflow Checklist
 

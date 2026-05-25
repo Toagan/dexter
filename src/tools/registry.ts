@@ -14,6 +14,15 @@ import { GET_FINANCIALS_DESCRIPTION } from './finance/get-financials.js';
 import { GET_MARKET_DATA_DESCRIPTION } from './finance/get-market-data.js';
 import { READ_FILINGS_DESCRIPTION } from './finance/read-filings.js';
 import { SCREEN_STOCKS_DESCRIPTION } from './finance/screen-stocks.js';
+import {
+  hasFrApiKey,
+  getGlobalFilings,
+  GET_GLOBAL_FILINGS_DESCRIPTION,
+  getGlobalFinancials,
+  GET_GLOBAL_FINANCIALS_DESCRIPTION,
+  readGlobalFiling,
+  READ_GLOBAL_FILING_DESCRIPTION,
+} from './finance/fr/index.js';
 import { heartbeatTool, HEARTBEAT_TOOL_DESCRIPTION } from './heartbeat/heartbeat-tool.js';
 import { cronTool, CRON_TOOL_DESCRIPTION } from './cron/cron-tool.js';
 import { memoryGetTool, MEMORY_GET_DESCRIPTION, memorySearchTool, MEMORY_SEARCH_DESCRIPTION, memoryUpdateTool, MEMORY_UPDATE_DESCRIPTION } from './memory/index.js';
@@ -143,6 +152,35 @@ export function getToolRegistry(model: string): RegisteredTool[] {
       concurrencySafe: false,
     },
   ];
+
+  // FinancialReports.eu — international filings + standardized financials (non-US coverage).
+  // Gated on FINANCIAL_REPORTS_API_KEY so the US-only Financial Datasets path is unaffected
+  // when no FR key is present. The agent routes by region/identifier via these descriptions.
+  if (hasFrApiKey()) {
+    tools.push(
+      {
+        name: 'get_global_filings',
+        tool: getGlobalFilings,
+        description: GET_GLOBAL_FILINGS_DESCRIPTION,
+        compactDescription: 'Worldwide (incl. non-US) regulatory filing metadata via FinancialReports.eu. Resolve by company name or ISIN.',
+        concurrencySafe: true,
+      },
+      {
+        name: 'get_global_financials',
+        tool: getGlobalFinancials,
+        description: GET_GLOBAL_FINANCIALS_DESCRIPTION,
+        compactDescription: 'Worldwide (incl. non-US) standardized financial statements via FinancialReports.eu. Reporting-currency values.',
+        concurrencySafe: true,
+      },
+      {
+        name: 'read_global_filing',
+        tool: readGlobalFiling,
+        description: READ_GLOBAL_FILING_DESCRIPTION,
+        compactDescription: 'Read AI-extracted text of a worldwide (incl. non-US) filing via FinancialReports.eu. Needs an FR filing id.',
+        concurrencySafe: true,
+      },
+    );
+  }
 
   // Build web_search as a fallback chain over whichever providers have keys configured.
   // The user's preferred provider (set via /search) is tried first; the others act as fallbacks.
